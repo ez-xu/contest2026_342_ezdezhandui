@@ -28,7 +28,7 @@
 
 #include <errno.h>
 #include <stdio.h>
-#include <nuttx/debug.h>
+#include <debug.h>
 
 #include <nuttx/can/can.h>
 #include <arch/board/board.h>
