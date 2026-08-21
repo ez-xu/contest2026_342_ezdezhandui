@@ -1,8 +1,6 @@
 # ##############################################################################
 # arch/risc-v/src/common/CMakeLists.txt
 #
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
 # additional information regarding copyright ownership.  The ASF licenses this
@@ -22,7 +20,7 @@
 
 set(SRCS)
 
-list(APPEND SRCS riscv_exception_common.S riscv_vectors.S)
+list(APPEND SRCS riscv_exception_common.S riscv_mhartid.S riscv_vectors.S)
 list(APPEND SRCS riscv_saveusercontext.S)
 list(APPEND SRCS riscv_allocateheap.c riscv_cpuidlestack.c)
 list(APPEND SRCS riscv_cpuinfo.c riscv_createstack.c riscv_doirq.c
@@ -30,20 +28,27 @@ list(APPEND SRCS riscv_cpuinfo.c riscv_createstack.c riscv_doirq.c
 list(APPEND SRCS riscv_exit.c riscv_getintstack.c riscv_getnewintctx.c)
 list(APPEND SRCS riscv_initialize.c riscv_initialstate.c riscv_modifyreg32.c)
 list(APPEND SRCS riscv_nputs.c riscv_registerdump.c)
+
+# riscv_mtimer requires the oneshot count interface (align with upstream)
+if(CONFIG_ONESHOT)
+  list(APPEND SRCS riscv_mtimer.c)
+endif()
 list(APPEND SRCS riscv_releasestack.c)
 list(APPEND SRCS riscv_stackframe.c riscv_tcbinfo.c riscv_swint.c)
 list(APPEND SRCS riscv_switchcontext.c riscv_usestack.c)
 
-if(CONFIG_ENABLE_ALL_SIGNALS)
+if(NOT CONFIG_DISABLE_SIGNALS)
   list(APPEND SRCS riscv_schedulesigaction.c riscv_sigdeliver.c)
-endif()
-
-if(CONFIG_ONESHOT)
-  list(APPEND SRCS riscv_mtimer.c)
 endif()
 
 if(NOT CONFIG_ARCH_IDLE_CUSTOM)
   list(APPEND SRCS riscv_idle.c)
+endif()
+
+if(NOT CONFIG_ALARM_ARCH)
+  if(NOT CONFIG_TIMER_ARCH)
+    list(APPEND SRCS riscv_mdelay.c riscv_udelay.c)
+  endif()
 endif()
 
 if(CONFIG_SMP)
@@ -70,7 +75,7 @@ endif()
 
 if(NOT CONFIG_BUILD_FLAT)
   list(APPEND SRCS riscv_task_start.c riscv_pthread_start.c)
-  if(CONFIG_ENABLE_ALL_SIGNALS)
+  if(NOT CONFIG_DISABLE_SIGNALS)
     list(APPEND SRCS riscv_signal_dispatch.c)
   endif()
   if(CONFIG_BUILD_PROTECTED)
@@ -86,7 +91,7 @@ if(CONFIG_STACK_COLORATION)
   list(APPEND SRCS riscv_checkstack.c)
 endif()
 
-if(CONFIG_ARCH_HAVE_VFORK OR CONFIG_ARCH_HAVE_FORK)
+if(CONFIG_ARCH_HAVE_FORK)
   list(APPEND SRCS fork.S riscv_fork.c)
 endif()
 
@@ -140,10 +145,3 @@ if(CONFIG_ARCH_USE_S_MODE)
 endif()
 
 target_sources(arch PRIVATE ${SRCS})
-
-nuttx_add_aux_library(STARTUP_OBJS crt0.c)
-
-target_compile_options(
-  STARTUP_OBJS
-  PRIVATE
-    $<GENEX_EVAL:$<TARGET_PROPERTY:nuttx_global,NUTTX_ELF_APP_COMPILE_OPTIONS>>)

@@ -27,7 +27,7 @@
 #include <nuttx/config.h>
 
 #include <assert.h>
-#include <nuttx/debug.h>
+#include <debug.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -353,6 +353,15 @@ void up_enable_irq(int irq)
     {
       irqerr("Failed to enable interrupt %d\n", irq);
     }
+
+  /* esp_intr_enable() only programs the interrupt routing matrix on
+   * ESP32-P4; the CLIC source enable is written separately and must be
+   * issued explicitly (idempotent).  Without it the interrupt source
+   * never fires and e.g. the USB-Serial console TX stays stuck in the
+   * xmit buffer.
+   */
+
+  esp_intr_enable_source(ESP_IRQ2SOURCE(irq));
 }
 
 /****************************************************************************

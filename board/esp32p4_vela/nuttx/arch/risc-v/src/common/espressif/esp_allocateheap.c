@@ -26,7 +26,7 @@
 
 #include <nuttx/config.h>
 
-#include <nuttx/debug.h>
+#include <debug.h>
 #include <sys/types.h>
 
 #include <arch/board/board.h>

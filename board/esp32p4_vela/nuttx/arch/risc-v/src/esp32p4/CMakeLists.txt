@@ -23,7 +23,7 @@
 # Include common espressif CMake configuration
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../common/espressif espressif)
 
-set(SRCS esp_chip_rev.c)
+set(SRCS esp_chip_rev.c esp32p4_atomic.c)
 
 target_compile_definitions(arch PRIVATE _RETARGETABLE_LOCKING)
 target_compile_options(arch PRIVATE -Wno-array-bounds -Wno-stringop-overflow)

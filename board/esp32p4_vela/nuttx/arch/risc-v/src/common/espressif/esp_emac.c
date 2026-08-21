@@ -788,4 +788,17 @@ errout:
   return ret;
 }
 
+/****************************************************************************
+ * Name: riscv_netinitialize
+ *
+ * Description:
+ *   Initialize the Ethernet controller (called from up_initialize()).
+ *
+ ****************************************************************************/
+
+void riscv_netinitialize(void)
+{
+  esp_emac_init();
+}
+
 #endif /* CONFIG_ESPRESSIF_EMAC */

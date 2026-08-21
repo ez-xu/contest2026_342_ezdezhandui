@@ -319,7 +319,16 @@ if(NOT IS_DIRECTORY "${ESP_HAL_3RDPARTY_REPO}")
     file(COPY "${ESP_HAL_NXTMPDIR_CACHE}" DESTINATION "${ESP_HAL_3RDPARTY_CHIP_DIR}/..")
   endif()
 
+  # Apply openvela compatibility patches to the HAL (nxtask_init signature, fcntl.h)
+  execute_process(
+    COMMAND git apply --check ${CMAKE_CURRENT_SOURCE_DIR}/../../esp32p4/patches/0001-openvela-compat-os.c.patch
+    WORKING_DIRECTORY ${ESP_HAL_3RDPARTY_REPO})
+  execute_process(
+    COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/../../esp32p4/patches/0001-openvela-compat-os.c.patch
+    WORKING_DIRECTORY ${ESP_HAL_3RDPARTY_REPO})
+
   # Copy gpio_sig_map.h and irq.h from the esp-hal-3rdparty repository to the NuttX directory
+  file(MAKE_DIRECTORY ${NUTTX_BINARY_DIR}/include/arch/chip)
   file(COPY ${ESP_HAL_3RDPARTY_REPO}/components/soc/${CHIP_SERIES}/include/soc/gpio_sig_map.h
        DESTINATION ${NUTTX_BINARY_DIR}/include/arch/chip/)
 

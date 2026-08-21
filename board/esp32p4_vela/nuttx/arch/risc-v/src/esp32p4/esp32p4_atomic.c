@@ -47,3 +47,24 @@ uint64_t __atomic_fetch_or_8(FAR uint64_t *ptr, uint64_t val, int memorder)
 
   return old;
 }
+
+uint64_t __atomic_load_8(FAR const uint64_t *ptr, int memorder)
+{
+  irqstate_t flags = up_irq_save();
+  uint64_t old = *ptr;
+
+  up_irq_restore(flags);
+
+  return old;
+}
+
+uint64_t __atomic_fetch_and_8(FAR uint64_t *ptr, uint64_t val, int memorder)
+{
+  irqstate_t flags = up_irq_save();
+  uint64_t old = *ptr;
+
+  *ptr = old & val;
+  up_irq_restore(flags);
+
+  return old;
+}
