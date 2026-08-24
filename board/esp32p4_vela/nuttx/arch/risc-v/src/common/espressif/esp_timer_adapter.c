@@ -481,8 +481,13 @@ int esp_hr_timer_init(void)
       return OK;
     }
 
-  /* Initialize the timer subsystem */
+  /* Initialize the timer subsystem.  esp_timer_early_init() primes the
+   * systimer HAL (systimer_hal_init) - it is normally run from the
+   * ESP_SYSTEM_INIT_FN startup table which is not executed on this port;
+   * without it systimer_hal.dev stays NULL and the alarm-enable path
+   * faults (write to 0x64). */
 
+  esp_timer_early_init();
   ret = esp_timer_init();
   if (ret == ESP_OK)
     {

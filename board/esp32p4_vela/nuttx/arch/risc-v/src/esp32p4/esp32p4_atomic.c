@@ -35,35 +35,38 @@
  * ships no libatomic, so provide the 64-bit atomic fetch-or used by
  * esp_gpio_reserve().  Single-core protection via critical section is
  * sufficient; upgrade to spinlock if SMP is enabled.
+ *
+ * The signatures must match GCC's built-in declarations exactly
+ * (volatile void *), otherwise -Werror=builtin-declaration-mismatch.
  */
 
-uint64_t __atomic_fetch_or_8(FAR uint64_t *ptr, uint64_t val, int memorder)
+uint64_t __atomic_fetch_or_8(volatile void *ptr, uint64_t val, int memorder)
 {
   irqstate_t flags = up_irq_save();
-  uint64_t old = *ptr;
+  uint64_t old = *(volatile uint64_t *)ptr;
 
-  *ptr = old | val;
+  *(volatile uint64_t *)ptr = old | val;
   up_irq_restore(flags);
 
   return old;
 }
 
-uint64_t __atomic_load_8(FAR const uint64_t *ptr, int memorder)
+uint64_t __atomic_load_8(const volatile void *ptr, int memorder)
 {
   irqstate_t flags = up_irq_save();
-  uint64_t old = *ptr;
+  uint64_t old = *(volatile const uint64_t *)ptr;
 
   up_irq_restore(flags);
 
   return old;
 }
 
-uint64_t __atomic_fetch_and_8(FAR uint64_t *ptr, uint64_t val, int memorder)
+uint64_t __atomic_fetch_and_8(volatile void *ptr, uint64_t val, int memorder)
 {
   irqstate_t flags = up_irq_save();
-  uint64_t old = *ptr;
+  uint64_t old = *(volatile uint64_t *)ptr;
 
-  *ptr = old & val;
+  *(volatile uint64_t *)ptr = old & val;
   up_irq_restore(flags);
 
   return old;
