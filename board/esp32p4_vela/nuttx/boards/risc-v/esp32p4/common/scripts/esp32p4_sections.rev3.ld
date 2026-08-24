@@ -502,45 +502,6 @@ SECTIONS
  _noinit_end = ABSOLUTE(.);
   } > sram_seg
 
-  .dram0.bss (NOLOAD) :
-  {
-    . = ALIGN(4);
-    _bss_start = ABSOLUTE(.);
-
-    /**
-     * ldgen places all bss-related data to mapping[dram0_bss]
-     * (See components/esp_system/app.lf).
-     */
-    _sbss = ABSOLUTE(.);
-    *(.dynsbss)
-    *(.sbss)
-    *(.sbss.*)
-    *(.gnu.linkonce.sb.*)
-    *(.scommon)
-    *(.sbss2)
-    *(.sbss2.*)
-    *(.gnu.linkonce.sb2.*)
-    *(.dynbss)
-    *(.bss)
-    *(.bss.*)
-    *(.share.mem)
-    *(.gnu.linkonce.b.*)
-    *(COMMON)
-
-    *(.dynbss .dynsbss .gnu.linkonce.b .gnu.linkonce.b.* .gnu.linkonce.sb .gnu.linkonce.sb.* .gnu.linkonce.sb2 .gnu.linkonce.sb2.* .sbss .sbss.* .sbss2 .sbss2.* .scommon .share.mem)
-#ifndef CONFIG_ESPRESSIF_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY
-    *(.ext_ram.bss .ext_ram.bss.*)
-#endif
-
-    . = ALIGN(4);
-    _ebss = ABSOLUTE(.);
-    _bss_end = ABSOLUTE(.);
-    _bss_end_low = ABSOLUTE(.);
-    _dram_end = ABSOLUTE(.);
-
-    . = ALIGN(4);
-    _bss_end = ABSOLUTE(.);
-  } > sram_seg
 
 #ifdef CONFIG_ESPRESSIF_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY
   /* This section holds .ext_ram.bss data and places it in external RAM. */
@@ -595,9 +556,20 @@ SECTIONS
   .flash_rodata_dummy (NOLOAD):
   {
     _flash_rodata_dummy_start = .;
+#if CONFIG_ESPRESSIF_SIMPLE_BOOT
+    /* SIMPLE_BOOT (RAM-only): .flash.text occupies real SRAM, so the dummy
+     * must NOT advance by SIZEOF(.flash.text) again (double-count) nor apply
+     * the 64KB MMU page alignment; .flash.rodata follows directly.  The
+     * XIP-style layout would push .flash.rodata past the ROM-reserved SRAM
+     * region (iram_loader/ROM data) and the ROM refuses to load it
+     * ("region ... overlaps ..., can't load").
+     */
+    . = ALIGN(ALIGNOF(.flash.text));
+#else
     . = ALIGN(ALIGNOF(.flash.text)) + SIZEOF(.flash.text);
     /* Add alignment of MMU page size + 0x20 bytes for the mapping header. */
     . = ALIGN(0x10000) + 0x20;
+#endif
   } > rodata_seg_low
 
   .flash.appdesc : ALIGN(0x10)
@@ -695,6 +667,49 @@ SECTIONS
     *(.tcommon .tcommon.*)
     _thread_local_bss_end = ABSOLUTE(.);
   } > rodata_seg_low
+
+  /* openvela SIMPLE_BOOT: .dram0.bss placed after all code/rodata
+   so the heap (from _ebss up to the ROM-reserved region) does not
+   overlap .flash.text/.flash.rodata loaded into SRAM. */
+  .dram0.bss (NOLOAD) :
+  {
+    . = ALIGN(4);
+    _bss_start = ABSOLUTE(.);
+
+    /**
+     * ldgen places all bss-related data to mapping[dram0_bss]
+     * (See components/esp_system/app.lf).
+     */
+    _sbss = ABSOLUTE(.);
+    *(.dynsbss)
+    *(.sbss)
+    *(.sbss.*)
+    *(.gnu.linkonce.sb.*)
+    *(.scommon)
+    *(.sbss2)
+    *(.sbss2.*)
+    *(.gnu.linkonce.sb2.*)
+    *(.dynbss)
+    *(.bss)
+    *(.bss.*)
+    *(.share.mem)
+    *(.gnu.linkonce.b.*)
+    *(COMMON)
+
+    *(.dynbss .dynsbss .gnu.linkonce.b .gnu.linkonce.b.* .gnu.linkonce.sb .gnu.linkonce.sb.* .gnu.linkonce.sb2 .gnu.linkonce.sb2.* .sbss .sbss.* .sbss2 .sbss2.* .scommon .share.mem)
+#ifndef CONFIG_ESPRESSIF_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY
+    *(.ext_ram.bss .ext_ram.bss.*)
+#endif
+
+    . = ALIGN(4);
+    _ebss = ABSOLUTE(.);
+    _bss_end = ABSOLUTE(.);
+    _bss_end_low = ABSOLUTE(.);
+    _dram_end = ABSOLUTE(.);
+
+    . = ALIGN(4);
+    _bss_end = ABSOLUTE(.);
+  } > sram_seg
 
   /**
    * This section contains all the rodata that is not used

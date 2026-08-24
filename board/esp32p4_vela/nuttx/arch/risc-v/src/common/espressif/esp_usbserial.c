@@ -477,7 +477,17 @@ static int esp_ioctl(struct file *filep, int cmd, unsigned long arg)
 
 void esp_usbserial_write(char ch)
 {
-  while (!esp_txready(&g_uart_usbserial));
+  /* Non-blocking: the USB-Serial-JTAG TX FIFO only drains when the host
+   * reads the CDC IN endpoint (serial_in_ep_data_free stays 0 after
+   * WR_DONE until then).  Blocking here makes the boot depend on the host
+   * listening and hangs the system otherwise (which then trips the HP WDT
+   * into a reset loop).  Drop the character instead; the interrupt-driven
+   * console driver handles backpressure properly. */
+
+  if (!esp_txready(&g_uart_usbserial))
+    {
+      return;
+    }
 
   esp_send(&g_uart_usbserial, ch);
 }

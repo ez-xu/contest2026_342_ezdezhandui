@@ -34,6 +34,7 @@
 
 #include <nuttx/irq.h>
 #include <nuttx/arch.h>
+#include <nuttx/kmalloc.h>
 
 #include "irq/irq.h"
 
@@ -49,6 +50,7 @@
 #include "esp_rom_sys.h"
 #include "riscv/interrupt.h"
 #include "soc/soc.h"
+#include "soc/clic_reg.h"
 
 #if SOC_INT_CLIC_SUPPORTED
 #  include "hal/interrupt_clic_ll.h"
@@ -335,6 +337,50 @@ void up_irqinitialize(void)
  * Returned Value:
  *   None.
  *
+ ****************************************************************************/
+
+/****************************************************************************
+ * Name: esprv_int_enable / esprv_int_disable
+ *
+ * Description:
+ *   Local CLIC interrupt enable/disable.  The ROM-provided symbols
+ *   (esprv_int_enable at 0x4fc005b4) rely on internal ROM state that is
+ *   never initialised on this port; calling them faults (NULL+0x64) and
+ *   panics.  Override with a direct CLICIE write (weak PROVIDE in the
+ *   ROM ld files loses to this strong definition).
+ *
+ ****************************************************************************/
+
+void esprv_int_enable(uint32_t unmask)
+{
+  int i;
+
+  for (i = 0; i < 32; i++)
+    {
+      if (unmask & (1u << i))
+        {
+          REG_SET_BIT(CLIC_INT_CTRL_REG(i + CLIC_EXT_INTR_NUM_OFFSET),
+                      CLIC_INT_IE);
+        }
+    }
+}
+
+void esprv_int_disable(uint32_t mask)
+{
+  int i;
+
+  for (i = 0; i < 32; i++)
+    {
+      if (mask & (1u << i))
+        {
+          REG_CLR_BIT(CLIC_INT_CTRL_REG(i + CLIC_EXT_INTR_NUM_OFFSET),
+                      CLIC_INT_IE);
+        }
+    }
+}
+
+/****************************************************************************
+ * Name: up_enable_irq
  ****************************************************************************/
 
 void up_enable_irq(int irq)

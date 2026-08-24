@@ -798,7 +798,9 @@ errout:
 
 void riscv_netinitialize(void)
 {
-  esp_emac_init();
+  /* EMAC is initialised from board_emac_init() (esp_bringup) once the
+   * scheduler is running - esp_timer needs tasks, which do not exist yet
+   * during up_initialize() on this port. */
 }
 
 #endif /* CONFIG_ESPRESSIF_EMAC */

@@ -228,8 +228,7 @@ extern uint8_t _rodata_reserved_end[];
  *
  ****************************************************************************/
 
-#if defined(CONFIG_ESPRESSIF_BOOTLOADER_MCUBOOT) || \
-    defined(CONFIG_ESPRESSIF_SIMPLE_BOOT)
+#if defined(CONFIG_ESPRESSIF_BOOTLOADER_MCUBOOT)
 static int map_rom_segments(uint32_t app_drom_start, uint32_t app_drom_vaddr,
                             uint32_t app_drom_size, uint32_t app_irom_start,
                             uint32_t app_irom_vaddr, uint32_t app_irom_size)
@@ -514,6 +513,46 @@ void __esp_start(void)
       {
         clic_ctl[i * 4] = 0;
       }
+  }
+
+  /* SIMPLE_BOOT: the ROM arms the LP WDT (super WDT), the RTC (flashboot)
+   * WDT and the HP WDTs before handing over, so any hang before the normal
+   * WDT-disable point below turns into an endless reset loop.  Disable all
+   * of them here.  Note: the real write-protect key is 0x50D83AA1 (per
+   * OpenOCD esp32p4.cfg), not 0xffffffff as the generated reg header claims.
+   */
+
+  {
+    volatile uint32_t *lp_wprot  = (volatile uint32_t *)(0x50116018);
+    volatile uint32_t *lp_cfg0   = (volatile uint32_t *)(0x50116000);
+    volatile uint32_t *swd_wprot = (volatile uint32_t *)(0x50116020);
+    volatile uint32_t *swd_cfg   = (volatile uint32_t *)(0x5011601c);
+    wdt_hal_context_t rwdt_ctx = RWDT_HAL_CONTEXT_DEFAULT();
+
+    *lp_wprot  = 0x50d83aa1;  /* LP_WDT_WPROTECT: unlock */
+    *lp_cfg0   = 0;           /* LP_WDT_CONFIG0: disable WDT */
+    *lp_wprot  = 0;           /* re-lock */
+    *swd_wprot = 0x50d83aa1;  /* LP_WDT_SWD_WPROTECT: unlock */
+    *swd_cfg   = 0x40000000;  /* LP_WDT_SWD_CONFIG: disable super WDT */
+    *swd_wprot = 0;           /* re-lock */
+
+    /* Clear WDT/SWD interrupt state (matches OpenOCD esp32p4.cfg). */
+    *(volatile uint32_t *)(0x50116030) = 0xc0000000;
+
+    /* HP WDTs (TIMG0/TIMG1 watchdog): WDT_CONFIG0 at +0x48, WDT_WPROTECT
+     * at +0x64 (key 0x50d83aa1), WDT_INT_CLR at +0x7c. */
+    for (uint32_t base = 0x500c2000; base <= 0x500c3000; base += 0x1000)
+      {
+        *(volatile uint32_t *)(base + 0x64) = 0x50d83aa1;
+        *(volatile uint32_t *)(base + 0x48) = 0;
+        *(volatile uint32_t *)(base + 0x7c) = 0x4;
+        *(volatile uint32_t *)(base + 0x64) = 0;
+      }
+
+    wdt_hal_write_protect_disable(&rwdt_ctx);
+    wdt_hal_set_flashboot_en(&rwdt_ctx, false);
+    wdt_hal_disable(&rwdt_ctx);
+    wdt_hal_write_protect_enable(&rwdt_ctx);
   }
 
   if (bootloader_init() != 0)
