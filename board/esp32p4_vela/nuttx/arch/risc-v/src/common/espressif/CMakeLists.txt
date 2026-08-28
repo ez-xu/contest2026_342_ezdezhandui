@@ -326,6 +326,13 @@ if(NOT IS_DIRECTORY "${ESP_HAL_3RDPARTY_REPO}")
   execute_process(
     COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/../../esp32p4/patches/0001-openvela-compat-os.c.patch
     WORKING_DIRECTORY ${ESP_HAL_3RDPARTY_REPO})
+  # openvela: keep apps mbedTLS Kconfig symbols visible in HAL TUs (PSA-less build)
+  execute_process(
+    COMMAND git apply --check ${CMAKE_CURRENT_SOURCE_DIR}/../../esp32p4/patches/0002-openvela-compat-sdkconfig-keep-mbedtls-config.patch
+    WORKING_DIRECTORY ${ESP_HAL_3RDPARTY_REPO})
+  execute_process(
+    COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/../../esp32p4/patches/0002-openvela-compat-sdkconfig-keep-mbedtls-config.patch
+    WORKING_DIRECTORY ${ESP_HAL_3RDPARTY_REPO})
 
   # Copy gpio_sig_map.h and irq.h from the esp-hal-3rdparty repository to the NuttX directory
   file(MAKE_DIRECTORY ${NUTTX_BINARY_DIR}/include/arch/chip)
@@ -401,6 +408,7 @@ endif()
 list(APPEND _esp_startup_u_opts "SHELL:-u esp_flash_spi_init_include_func")
 
 target_link_options(nuttx PRIVATE ${_esp_startup_u_opts})
+
 
 # ##############################################################################
 # Include chip-specific HAL configuration
