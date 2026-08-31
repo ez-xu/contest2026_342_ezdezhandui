@@ -34,9 +34,16 @@
 #include "common.ld"
 
 #if !CONFIG_ESP32P4_SELECTS_REV_LESS_V3
-#define SRAM_START       0x4FF00000 + CONFIG_CACHE_L2_CACHE_SIZE
-#define SRAM_END         0x4FFAEFC0  /* 2nd stage bootloader iram_loader_seg start address */
-#define SRAM_SIZE        SRAM_END - SRAM_START
+/* SIMPLE_BOOT: the ROM bootloader arms (locked) PMP entries covering
+ * [0x4FF40000, 0x4FFC0000) (RW) and everything above 0x4FFC0000 (L2 cache
+ * storage / ROM data) is denied by default once PMP is configured; locked
+ * entries cannot be cleared.  The low [0x4FF00000, 0x4FF40000) is the L2
+ * cache storage and is wiped at reset, so it cannot hold image content.
+ * The usable flat-image window is therefore [0x4FF40000, 0x4FFC0000).
+ */
+#define SRAM_START       0x4FF40000
+#define SRAM_END         0x4FFC0000
+#define SRAM_SIZE        (SRAM_END - SRAM_START)
 #else
 #define SRAM_LOW_START     0x4FF00000
 #define SRAM_LOW_END       0x4FF2CBD0  /* 2nd stage bootloader iram_loader_seg start address */

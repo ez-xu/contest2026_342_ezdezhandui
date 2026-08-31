@@ -31,4 +31,11 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
+/* openvela SIMPLE_BOOT: the 512KB SRAM image cannot afford libgcc's 128-bit
+ * soft-fp (__addtf3/__subtf3/__multf3/__divtf3, ~50KB pulled in by the
+ * generic strtold implementation behind strtod/strtof).  Force long double
+ * == double on this port; nothing here needs 128-bit floats. */
+
+#undef CONFIG_HAVE_LONG_DOUBLE
+
 #endif /* __ARCH_RISCV_INCLUDE_ESP32P4_CHIP_H */

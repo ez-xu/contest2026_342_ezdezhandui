@@ -289,6 +289,11 @@ ifneq ($(USE_NXTMPDIR_ESP_REPO_DIRECTLY),y)
 	$(Q) echo "Espressif HAL for 3rd Party Platforms: ${ESP_HAL_3RDPARTY_VERSION}"
 	$(Q) git -C chip/$(ESP_HAL_3RDPARTY_REPO) checkout --quiet $(ESP_HAL_3RDPARTY_VERSION)
 	$(Q) git -C chip/$(ESP_HAL_3RDPARTY_REPO) submodule --quiet update --init $(GIT_DEPTH_PARAMETER) components/mbedtls/mbedtls
+ifeq ($(CONFIG_ARCH_CHIP_ESP32P4),y)
+	$(Q) echo "Espressif HAL for 3rd Party Platforms: applying openvela esp32p4 compat patches..."
+	$(Q) git -C chip/$(ESP_HAL_3RDPARTY_REPO) apply --exclude='components/mbedtls/*' $(TOPDIR)/arch/risc-v/src/esp32p4/patches/0001-openvela-compat-os.c.patch
+	$(Q) git -C chip/$(ESP_HAL_3RDPARTY_REPO) apply $(TOPDIR)/arch/risc-v/src/esp32p4/patches/0002-openvela-compat-sdkconfig-keep-mbedtls-config.patch
+endif
 endif
 ifeq ($(CONFIG_ESPRESSIF_WIRELESS),y)
 ifneq ($(USE_NXTMPDIR_ESP_REPO_DIRECTLY),y)
