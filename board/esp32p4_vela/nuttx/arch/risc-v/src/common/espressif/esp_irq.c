@@ -400,14 +400,14 @@ void up_enable_irq(int irq)
       irqerr("Failed to enable interrupt %d\n", irq);
     }
 
-  /* esp_intr_enable() only programs the interrupt routing matrix on
-   * ESP32-P4; the CLIC source enable is written separately and must be
-   * issued explicitly (idempotent).  Without it the interrupt source
-   * never fires and e.g. the USB-Serial console TX stays stuck in the
-   * xmit buffer.
+  /* esp_intr_enable() re-connects the interrupt routing matrix on
+   * ESP32-P4.  The CLIC IE bit for the allocated intno was already set by
+   * esp_intr_alloc() (ESP_INTR_ENABLE(intr)), so no further CLIC write is
+   * needed here.  Note: do NOT add esp_intr_enable_source(ESP_IRQ2SOURCE
+   * (irq)) - the source number is NOT the CLIC intno; passing it would
+   * enable an unrelated interrupt line (and 1 << source is UB for
+   * source >= 32, e.g. ETH_MAC = 92).
    */
-
-  esp_intr_enable_source(ESP_IRQ2SOURCE(irq));
 }
 
 /****************************************************************************
