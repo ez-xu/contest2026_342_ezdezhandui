@@ -61,6 +61,8 @@
 #ifdef CONFIG_ARCH_CHIP_ESP32P4
 #  include "soc/hp_peri_pms_reg.h"
 #  include "soc/lp_peri_pms_reg.h"
+#  include "soc/clic_reg.h"
+#  include "hal/interrupt_clic_ll.h"
 #endif
 #include "soc/rtc.h"
 
@@ -502,16 +504,21 @@ void __esp_start(void)
   /* SIMPLE_BOOT boots straight into NuttX with no second-stage loader; the
    * ROM may leave CLIC interrupt sources enabled which fire before NuttX
    * installs its IRQ handlers, causing an early interrupt storm.  Disable
-   * every CLIC interrupt control byte here; NuttX re-enables what it needs
-   * during normal bring-up.
+   * the CLIC IE bit of every interrupt here (BYTE_CLIC_INT_IE_REG = base +
+   * 1 + i*4 is the IE byte of the 4-byte CLIC control block); NuttX
+   * re-enables what it needs during normal bring-up.  Only RV_TOTAL_INT_
+   * COUNT (48) interrupt blocks exist on esp32p4 - do not sweep beyond it.
+   * Note: write the byte directly - REG_CLR_BIT would do a 32-bit
+   * read-modify-write across block boundaries.
    */
 
   {
-    volatile uint8_t *clic_ctl = (volatile uint8_t *)(0x20801003);
+    volatile uint8_t *clic_ie =
+      (volatile uint8_t *)(BYTE_CLIC_INT_IE_REG(0));
 
-    for (int i = 0; i < 128; i++)
+    for (int i = 0; i < RV_TOTAL_INT_COUNT; i++)
       {
-        clic_ctl[i * 4] = 0;
+        clic_ie[i * 4] = 0;
       }
   }
 
