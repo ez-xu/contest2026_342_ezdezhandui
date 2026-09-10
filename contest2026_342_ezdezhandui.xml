@@ -305,5 +305,8 @@
     <copyfile src="board/esp32p4_vela/ai_agent/src/infra/vela_tls.c" dest="packages/ai_agent/src/infra/vela_tls.c"/>
     <copyfile src="board/esp32p4_vela/ai_agent/src/stubs.c" dest="packages/ai_agent/src/stubs.c"/>
     <copyfile src="board/esp32p4_vela/ai_agent/src/tools/skill_loader.c" dest="packages/ai_agent/src/tools/skill_loader.c"/>
+    <copyfile src="board/esp32p4_vela/ai_agent/src/infra/cron_service.c" dest="packages/ai_agent/src/infra/cron_service.c"/>
+    <copyfile src="board/esp32p4_vela/ai_agent/src/channels/cmd_llm.c" dest="packages/ai_agent/src/channels/cmd_llm.c"/>
+    <copyfile src="board/esp32p4_vela/ai_agent/docs/channels.md" dest="packages/ai_agent/docs/channels.md"/>
   </project>
 </manifest>
