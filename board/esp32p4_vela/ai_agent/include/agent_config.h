@@ -128,7 +128,7 @@
 #define AGENT_TIMEZONE "CST-8"
 
 /* ── LLM ────────────────────────────────────────────────────── */
-#define AGENT_LLM_DEFAULT_MODEL "mimo-v2-flash"
+#define AGENT_LLM_DEFAULT_MODEL "mimo-v2.5"
 #define AGENT_LLM_MAX_TOKENS 4096
 #define AGENT_LLM_MAX_TOKENS_OPENAI 16384
 #define AGENT_LLM_API_HOST "api.xiaomimimo.com"
@@ -156,7 +156,7 @@
 /* ── MiMo (Xiaomi MiMo platform) ───────────────────────────── */
 #define AGENT_LLM_MIMO_HOST "api.xiaomimimo.com"
 #define AGENT_LLM_MIMO_PATH "/v1/chat/completions"
-#define AGENT_LLM_MIMO_MODEL "mimo-v2-flash"
+#define AGENT_LLM_MIMO_MODEL "mimo-v2.5"
 
 /* ── Message Bus ────────────────────────────────────────────── */
 #define AGENT_BUS_QUEUE_LEN 16
