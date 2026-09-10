@@ -486,11 +486,12 @@ static int tls_write_request(tls_ctx_t* ctx,
  */
 #define TLS_RAW_BUF_SIZE 4096  /* 4KB: fits MiMo JSON, saves 8KB bss for 35KB heap */
 
-/* Number of static raw buffers — at most 2, scaled to pool size.
- * Each buffer is 8KB; pool=1 uses 1 buffer, pool>=2 uses 2. */
+/* Number of raw buffers — at most 2, scaled to pool size.
+ * openvela: buffers are heap-allocated (heap = PSRAM) instead of static .bss
+ * so that the 8KB they used to occupy in SRAM is freed for code space. */
 #define TLS_RAW_BUF_COUNT (CONN_POOL_SIZE < 2 ? 1 : 2)
 
-static char s_tls_raw_buf[TLS_RAW_BUF_COUNT][TLS_RAW_BUF_SIZE];
+static char* s_tls_raw_buf[TLS_RAW_BUF_COUNT];
 static pthread_mutex_t s_tls_raw_lock[TLS_RAW_BUF_COUNT];
 static pthread_once_t s_tls_raw_once = PTHREAD_ONCE_INIT;
 
@@ -498,6 +499,8 @@ static void tls_raw_init_once(void)
 {
     for (int i = 0; i < TLS_RAW_BUF_COUNT; i++) {
         pthread_mutex_init(&s_tls_raw_lock[i], NULL);
+        /* Heap allocation lands in PSRAM (MM_REGIONS>=2, no kernel heap). */
+        s_tls_raw_buf[i] = (char*)malloc(TLS_RAW_BUF_SIZE);
     }
 }
 
@@ -505,9 +508,15 @@ static char* tls_raw_acquire(void)
 {
     pthread_once(&s_tls_raw_once, tls_raw_init_once);
     for (int i = 0; i < TLS_RAW_BUF_COUNT; i++) {
+        if (s_tls_raw_buf[i] == NULL) {
+            continue;
+        }
         if (pthread_mutex_trylock(&s_tls_raw_lock[i]) == 0) {
             return s_tls_raw_buf[i];
         }
+    }
+    if (s_tls_raw_buf[0] == NULL) {
+        return NULL;
     }
     /* All busy — block on first */
     pthread_mutex_lock(&s_tls_raw_lock[0]);
@@ -527,11 +536,15 @@ static void tls_raw_release(char* buf)
 static int tls_read_response(tls_ctx_t* ctx, char* resp_buf, size_t resp_cap,
     size_t* out_body_len, bool* out_keep_alive)
 {
-    /* Use static buffers to avoid heap fragmentation */
+    /* openvela: raw buffer is heap-allocated in PSRAM (see tls_raw_acquire) */
     char* raw = tls_raw_acquire();
     size_t raw_len = 0;
     int eof = 0;
     int ret;
+
+    if (raw == NULL) {
+        return -ENOMEM;
+    }
 
     /* Read until we have the full header (double CRLF) or buffer full */
     while (!eof && raw_len < TLS_RAW_BUF_SIZE - 1) {
