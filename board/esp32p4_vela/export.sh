@@ -69,7 +69,10 @@ sync_diff() {
   local NAME="$1" REPO="$2" DST="$3"
   mkdir -p "$DST"
   DELETED="$DST/.deleted-files"
-  : > "$DELETED"
+  # 删除清单先写临时文件，确认本次算出了内容才覆盖既有清单——避免 BASE 取错
+  # 或分支处于 detached 时（repo sync 后常见）空 diff 把既有清单静默清空。
+  local TMP_DELETED
+  TMP_DELETED="$(mktemp)"
   local count=0 del_count=0
   while IFS=$'\t' read -r st path; do
     [ -z "$path" ] && continue
@@ -86,7 +89,7 @@ sync_diff() {
     esac
     case "$st" in
       D)
-        echo "$path" >> "$DELETED"
+        echo "$path" >> "$TMP_DELETED"
         rm -f "$DST/$path"
         echo "  ✂ 删除 $path"
         del_count=$((del_count+1))
@@ -99,9 +102,24 @@ sync_diff() {
         ;;
     esac
   done
-  # 无删除文件时不保留空清单
-  if [ "$del_count" -eq 0 ]; then
-    rm -f "$DELETED"
+
+  # 空 diff：极可能 BASE/分支不对 → 不动文件树也不动既有清单，只告警
+  if [ "$count" -eq 0 ] && [ "$del_count" -eq 0 ]; then
+    rm -f "$TMP_DELETED"
+    echo "  ⚠ $NAME: diff 为空（请检查 $REPO 的分支与 BASE），保留既有 .deleted-files" >&2
+    return 0
+  fi
+
+  if [ "$del_count" -gt 0 ]; then
+    mv "$TMP_DELETED" "$DELETED"
+  else
+    rm -f "$TMP_DELETED"
+    if [ -s "$DELETED" ]; then
+      # 删除项已在更早提交里体现：保留既有清单，不误清
+      echo "  ⚠ $NAME: 本次无删除项但既有 .deleted-files 非空 → 保留" >&2
+    else
+      rm -f "$DELETED"
+    fi
   fi
   echo "  ✅ $NAME 同步 $count 文件"
 }
