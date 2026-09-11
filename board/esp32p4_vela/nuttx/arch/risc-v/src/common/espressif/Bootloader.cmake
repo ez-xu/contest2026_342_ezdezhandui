@@ -80,6 +80,8 @@ function(generate_bootloader_config)
   if(CONFIG_ESPRESSIF_FLASH_4M)
     string(APPEND CONFIG_CONTENT "CONFIG_ESPTOOLPY_FLASHSIZE_4MB=1\n")
   endif()
+  # openvela: MCUboot keeps the 4MB flash view (bootloader-time MMU window
+  # limit); the 16MB part's upper flash is used by the application only.
 
   # Flash mode configuration
   if(CONFIG_ESPRESSIF_FLASH_MODE_DIO)
@@ -142,6 +144,13 @@ function(generate_bootloader_config)
            "CONFIG_ESP_SCRATCH_OFFSET=${CONFIG_ESPRESSIF_OTA_SCRATCH_OFFSET}\n")
     string(APPEND CONFIG_CONTENT
            "CONFIG_ESP_SCRATCH_SIZE=${CONFIG_ESPRESSIF_OTA_SCRATCH_SIZE}\n")
+
+    # openvela: MCUboot's bootloader-time MMU window cannot map a
+    # multi-megabyte scratch area, so image swapping with a scratch partition
+    # is not usable here.  Upgrade-only mode writes the new image straight to
+    # its slot, which is what the contest flow needs (the application is
+    # flashed with esptool / `ninja flash` without any bootloader swap).
+    string(APPEND CONFIG_CONTENT "CONFIG_ESP_BOOT_UPGRADE_ONLY=1\n")
     string(APPEND CONFIG_CONTENT "CONFIG_ESP_CONSOLE_UART=1\n")
 
     # UART console configuration
@@ -228,6 +237,14 @@ set(MCUBOOT_BUILD_DIR "${NUTTX_DIR}/build-${CHIP_SERIES}-bootloader")
 set(MCUBOOT_SOURCE_DIR "${MCUBOOT_SRCDIR}/boot/espressif")
 
 # Determine flash size (default: 4MB)
+#
+# openvela/MCUboot note: this value is what the *bootloader* is told about
+# the flash, and MCUboot maps flash pages through a small, bootloader-time
+# MMU window.  Declaring a 16MB part here makes it try to map regions far
+# above the window and it faults (Load access fault) very early in
+# bootloader_init().  MCUboot only has to reach the bootloader slots plus
+# scratch, so it stays on the 4MB view; the remaining flash of the 16MB part
+# is owned by the application (see the OTA_* offsets in the board defconfig).
 if(CONFIG_ESPRESSIF_FLASH_2M)
   set(MCUBOOT_FLASH_SIZE "2MB")
 elseif(CONFIG_ESPRESSIF_FLASH_4M)
@@ -286,7 +303,8 @@ ExternalProject_Add(
   GIT_TAG ${MCUBOOT_VERSION}
   SOURCE_DIR ${MCUBOOT_SRCDIR}
   PATCH_COMMAND
-  COMMAND git submodule --quiet update --init --recursive ext/mbedtls
+  COMMAND git submodule --quiet update --init --recursive ext/mbedtls-3.6.0
+  COMMAND bash ${TOOLSDIR}/mcuboot_p4_fixup.sh ${MCUBOOT_SRCDIR}
           WORKING_DIRECTORY ${MCUBOOT_ESPDIR}
   CONFIGURE_COMMAND
   CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${MCUBOOT_TOOLCHAIN}

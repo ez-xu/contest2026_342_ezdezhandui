@@ -676,7 +676,17 @@ void __esp_start(void)
    * RTC slow clock calibration.
    */
 
+#ifndef CONFIG_ESPRESSIF_BOOTLOADER_MCUBOOT
+  /* openvela/MCUboot: skip the clock re-initialisation.  The 2nd stage
+   * bootloader already brought up the CPU/MSPI clocks, and esp_clk_init()
+   * ends in rtc_clk_cpu_freq_set_config(), which changes the CPU PLL while
+   * the application executes *from flash* (XIP): the flash timing is not
+   * re-tuned for the new clock, so the next instruction fetch stalls until
+   * the WDT resets the chip.  With SIMPLE_BOOT every instruction lived in
+   * SRAM, which is why the same call was harmless there.
+   */
   esp_clk_init();
+#endif
 
   esp_mspi_pin_reserve();
 

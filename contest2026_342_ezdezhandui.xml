@@ -308,5 +308,9 @@
     <copyfile src="board/esp32p4_vela/ai_agent/src/infra/cron_service.c" dest="packages/ai_agent/src/infra/cron_service.c"/>
     <copyfile src="board/esp32p4_vela/ai_agent/src/channels/cmd_llm.c" dest="packages/ai_agent/src/channels/cmd_llm.c"/>
     <copyfile src="board/esp32p4_vela/ai_agent/docs/channels.md" dest="packages/ai_agent/docs/channels.md"/>
+    <copyfile src="board/esp32p4_vela/nuttx/tools/espressif/mcuboot_p4_fixup.sh" dest="nuttx/tools/espressif/mcuboot_p4_fixup.sh"/>
+    <copyfile src="board/esp32p4_vela/nuttx/tools/espressif/mcuboot_p4_loader_patch.py" dest="nuttx/tools/espressif/mcuboot_p4_loader_patch.py"/>
+    <copyfile src="board/esp32p4_vela/nuttx/tools/espressif/mcuboot_mkloadhdr.py" dest="nuttx/tools/espressif/mcuboot_mkloadhdr.py"/>
+    <copyfile src="board/esp32p4_vela/nuttx/tools/espressif/mcuboot_toolchain_espressif.cmake" dest="nuttx/tools/espressif/mcuboot_toolchain_espressif.cmake"/>
   </project>
 </manifest>
