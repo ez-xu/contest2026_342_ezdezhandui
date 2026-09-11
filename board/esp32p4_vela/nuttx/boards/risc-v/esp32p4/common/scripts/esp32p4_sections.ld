@@ -768,10 +768,28 @@ SECTIONS
   }
 
   _image_irom_vma = ADDR(.flash.text);
-  _image_irom_lma = LOADADDR(.flash.text);
   _image_irom_size = SIZEOF(.flash.text);
-
   _image_drom_vma = ADDR(.flash.rodata);
-  _image_drom_lma = LOADADDR(.flash.rodata);
   _image_drom_size = SIZEOF(.flash.rodata);
+
+#if defined(CONFIG_ESPRESSIF_BOOTLOADER_MCUBOOT) && !defined(CONFIG_ESPRESSIF_SIMPLE_BOOT)
+  /* openvela/MCUboot: NuttX maps the flash region itself, using
+   *   paddr = CONFIG_ESPRESSIF_OTA_PRIMARY_SLOT_OFFSET + <section LMA>
+   * (see arch/risc-v/src/common/espressif/esp_start.c, map_rom_segments()).
+   * The LMA therefore has to be a slot-relative *flash byte offset*, not the
+   * virtual address: this linker script has no `AT>` rule here, so
+   * LOADADDR() would return the VMA and the computed paddr would be
+   * nonsense.  The MCUboot payload places the execute-in-place region at
+   * slot offset MCUBOOT_XIP_SLOT_OFFSET (kept in sync with
+   * tools/espressif/mcuboot_mkloadhdr.py, which asserts this value).
+   */
+#define MCUBOOT_XIP_SLOT_OFFSET 0x10000
+#define MCUBOOT_XIP_VADDR_BASE  0x40000000
+
+  _image_irom_lma = MCUBOOT_XIP_SLOT_OFFSET + (ADDR(.flash.text) - MCUBOOT_XIP_VADDR_BASE);
+  _image_drom_lma = MCUBOOT_XIP_SLOT_OFFSET + (ADDR(.flash.rodata) - MCUBOOT_XIP_VADDR_BASE);
+#else
+  _image_irom_lma = LOADADDR(.flash.text);
+  _image_drom_lma = LOADADDR(.flash.rodata);
+#endif
 }

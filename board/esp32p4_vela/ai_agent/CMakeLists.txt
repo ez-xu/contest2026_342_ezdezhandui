@@ -53,6 +53,14 @@ if(CONFIG_EXAMPLES_AI_AGENT_VELA)
     src/tools/tool_guard.c
     src/stubs.c
     src/ui/qrcode_display.c
+
+    # openvela: with MCUboot the application executes from flash (XIP), so the
+    # 512KB SRAM ceiling that forced these modules behind weak stubs is gone.
+    # The tools below are pure software (network / LLM) and need no on-board
+    # driver, so they are now always compiled in.
+    src/tools/tool_web_search.c
+    src/llm/llm_vision.c
+    src/tools/tool_vision.c
   )
 
   # voice pipeline (audio drivers are wired up later; weak stubs in

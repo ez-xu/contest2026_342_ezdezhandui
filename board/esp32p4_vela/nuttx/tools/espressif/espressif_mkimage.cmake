@@ -110,9 +110,10 @@ if(CONFIG_ESPRESSIF_BOOTLOADER_MCUBOOT)
   # MCUboot: Use imgtool to sign the image
   message(STATUS "Generate NuttX signed image")
 
-  # Check if nuttx.hex exists
-  if(NOT EXISTS "${BINARY_DIR}/nuttx.hex")
-    message(FATAL_ERROR "nuttx.hex not found in ${BINARY_DIR}")
+  # MCUboot's espressif port loads an ESP image (segment headers), so the
+  # payload to sign is the esptool elf2image output, not the Intel HEX.
+  if(NOT EXISTS "${BINARY_DIR}/nuttx")
+    message(FATAL_ERROR "nuttx ELF not found in ${BINARY_DIR}")
   endif()
 
   # Get imgtool arguments from config
@@ -161,7 +162,31 @@ if(CONFIG_ESPRESSIF_BOOTLOADER_MCUBOOT)
       ${SLOT_SIZE})
 
   execute_process(
-    COMMAND ${IMGTOOL} sign ${IMGTOOL_SIGN_ARGS} ${BINARY_DIR}/nuttx.hex
+    COMMAND ${ESPTOOL} -c ${CHIP_SERIES} elf2image -fs ${FLASH_SIZE} -fm
+            ${FLASH_MODE} -ff ${FLASH_FREQ} -o ${BINARY_DIR}/nuttx-app.bin
+            ${BINARY_DIR}/nuttx
+    RESULT_VARIABLE ESPTOOL_APP_RESULT
+    WORKING_DIRECTORY ${BINARY_DIR})
+
+  if(NOT ESPTOOL_APP_RESULT EQUAL 0)
+    message(FATAL_ERROR "esptool elf2image (MCUboot app image) failed")
+  endif()
+
+  # MCUboot's ESP32-P4 port reads a load header (magic 0xace637d3) describing
+  # the SRAM regions to copy and the flash region to map for XIP, so the
+  # ESP image is repacked into that layout before signing.
+  execute_process(
+    COMMAND ${PYTHON3} ${SOURCE_DIR}/tools/espressif/mcuboot_mkloadhdr.py
+            ${BINARY_DIR}/nuttx-app.bin ${BINARY_DIR}/nuttx-payload.bin
+    RESULT_VARIABLE MKLOADHDR_RESULT
+    WORKING_DIRECTORY ${BINARY_DIR})
+
+  if(NOT MKLOADHDR_RESULT EQUAL 0)
+    message(FATAL_ERROR "load header generation failed")
+  endif()
+
+  execute_process(
+    COMMAND ${IMGTOOL} sign ${IMGTOOL_SIGN_ARGS} ${BINARY_DIR}/nuttx-payload.bin
             ${BINARY_DIR}/nuttx.bin
     RESULT_VARIABLE IMGTOOL_RESULT
     WORKING_DIRECTORY ${BINARY_DIR})
